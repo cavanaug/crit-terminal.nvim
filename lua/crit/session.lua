@@ -46,9 +46,13 @@ function M.crit_on_path()
   return vim.fn.executable("crit") == 1
 end
 
+local function crit_missing_error()
+  error("Crit CLI not found on PATH; install from https://crit.md", 0)
+end
+
 function M.status()
   if not M.crit_on_path() then
-    error("Crit CLI not found on PATH", 0)
+    crit_missing_error()
   end
 
   local result = vim.system({ "crit", "status", "--json" }, { text = true }):wait()
@@ -80,7 +84,7 @@ function M.ensure_daemon(opts)
   end
 
   if not M.crit_on_path() then
-    error("Crit CLI not found on PATH", 0)
+    crit_missing_error()
   end
 
   local ok, raw_status = pcall(M.status)
