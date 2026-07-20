@@ -17,6 +17,9 @@ M.defaults = {
 M.opts = nil
 
 function M.setup(opts)
+  if M.opts and (not opts or vim.tbl_isempty(opts)) then
+    return M.opts
+  end
   M.opts = vim.tbl_deep_extend("force", vim.deepcopy(M.defaults), opts or {})
   return M.opts
 end
