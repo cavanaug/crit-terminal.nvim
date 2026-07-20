@@ -13,7 +13,7 @@ client._request = function(method, url, body)
   table.insert(calls, { method = method, url = url, body = body })
 
   if method == "GET" and url:find("/api/health", 1, true) then
-    return 200, '{"ok":true}'
+    return 200, '{"status":"ok"}'
   end
 
   if method == "GET" and url:find("/api/session", 1, true) then
@@ -24,6 +24,10 @@ client._request = function(method, url, body)
     return 200, '{"mode":"files","files":[{"path":"plan.md"}]}'
   end
 
+  if method == "GET" and url:find("/api/files/list", 1, true) then
+    return 200, '["plan.md"]'
+  end
+
   if method == "GET" and url:find("/api/file/comments", 1, true) then
     return 200, '[{"id":"c_old","start_line":3,"end_line":4,"body":"old"}]'
   end
@@ -32,11 +36,11 @@ client._request = function(method, url, body)
     return 200, '{"id":"c_abc","start_line":1,"end_line":2,"body":"hi"}'
   end
 
-  if method == "POST" and url:find("/api/comment/c_abc", 1, true) then
-    return 200, '{"id":"c_abc","start_line":2,"end_line":3,"body":"updated"}'
+  if method == "PUT" and url:find("/api/comment/c_abc%?path=plan%.md", 1) then
+    return 200, '{"id":"c_abc","start_line":1,"end_line":2,"body":"updated"}'
   end
 
-  if method == "DELETE" and url:find("/api/comment/c_abc", 1, true) then
+  if method == "DELETE" and url:find("/api/comment/c_abc%?path=plan%.md", 1) then
     return 204, ""
   end
 
@@ -58,7 +62,8 @@ local session = c:session()
 assert_eq(session.mode, "files", "session.mode")
 
 local files = c:files()
-assert_eq(files[1].path, "plan.md", "files[1].path")
+assert_eq(files[1], "plan.md", "files[1]")
+assert(calls[#calls].url:find("/api/files/list", 1, true), "files endpoint")
 
 local comments = c:list_file_comments("docs/plan one.md")
 assert_eq(comments[1].id, "c_old", "comments[1].id")
@@ -74,17 +79,18 @@ assert_eq(calls[#calls].body, vim.json.encode({
   body = "hi",
 }), "comment body")
 
-local updated = c:update_comment("c_abc", {
-  start_line = 2,
-  end_line = 3,
-  body = "updated",
-})
+local updated = c:update_comment("plan.md", "c_abc", "updated")
 assert_eq(updated.body, "updated", "updated.body")
-assert_eq(calls[#calls].method, "POST", "update method")
+assert_eq(calls[#calls].method, "PUT", "update method")
+assert(calls[#calls].url:find("path=plan%.md"), "update path query")
+assert_eq(calls[#calls].body, vim.json.encode({
+  body = "updated",
+}), "update body")
 
-local deleted = c:delete_comment("c_abc")
+local deleted = c:delete_comment("plan.md", "c_abc")
 assert_eq(deleted, true, "delete result")
 assert_eq(calls[#calls].method, "DELETE", "delete method")
+assert(calls[#calls].url:find("path=plan%.md"), "delete path query")
 
 c:finish()
 assert_eq(calls[#calls].method, "POST", "finish method")

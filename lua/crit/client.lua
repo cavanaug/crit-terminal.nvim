@@ -81,7 +81,7 @@ end
 
 function Client:health()
   local response = self:_json_request("GET", "/api/health")
-  return response and response.ok == true or false
+  return response == nil or response.status == nil or response.status == "ok"
 end
 
 function Client:wait_ready(opts)
@@ -111,8 +111,7 @@ function Client:session()
 end
 
 function Client:files()
-  local session = self:session()
-  return session and session.files or {}
+  return self:_json_request("GET", "/api/files/list") or {}
 end
 
 function Client:list_file_comments(path)
@@ -127,12 +126,14 @@ function Client:add_file_comment(path, start_line, end_line, body)
   })
 end
 
-function Client:update_comment(comment_id, attrs)
-  return self:_json_request("POST", "/api/comment/" .. q(comment_id), attrs)
+function Client:update_comment(path, comment_id, body)
+  return self:_json_request("PUT", "/api/comment/" .. q(comment_id) .. "?path=" .. q(path), {
+    body = body,
+  })
 end
 
-function Client:delete_comment(comment_id)
-  self:_json_request("DELETE", "/api/comment/" .. q(comment_id))
+function Client:delete_comment(path, comment_id)
+  self:_json_request("DELETE", "/api/comment/" .. q(comment_id) .. "?path=" .. q(path))
   return true
 end
 
