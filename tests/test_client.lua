@@ -53,7 +53,69 @@ end
 
 local c = client.new("http://127.0.0.1:9/")
 assert_eq(c.base_url, "http://127.0.0.1:9", "trim trailing slash")
-assert_eq(c:health(), true, "health")
+assert_eq(c:health(), true, "health ok")
+
+client._request = function(method, url)
+  if method == "GET" and url:find("/api/health", 1, true) then
+    return 200, '{"status":"degraded"}'
+  end
+  return 500, '{"error":"unexpected"}'
+end
+assert_eq(c:health(), false, "health degraded")
+
+client._request = function(method, url)
+  if method == "GET" and url:find("/api/health", 1, true) then
+    return 200, "{not json"
+  end
+  return 500, '{"error":"unexpected"}'
+end
+local ok, err = pcall(function()
+  c:health()
+end)
+assert_eq(ok, false, "health json error")
+assert(err:find("Crit JSON decode failed", 1, true), "json error prefix")
+
+client._request = function(method, url, body)
+  table.insert(calls, { method = method, url = url, body = body })
+
+  if method == "GET" and url:find("/api/health", 1, true) then
+    return 200, '{"status":"ok"}'
+  end
+
+  if method == "GET" and url:find("/api/session", 1, true) then
+    session_attempts = session_attempts + 1
+    if session_attempts == 1 then
+      return 503, '{"error":"warming up"}'
+    end
+    return 200, '{"mode":"files","files":[{"path":"plan.md"}]}'
+  end
+
+  if method == "GET" and url:find("/api/files/list", 1, true) then
+    return 200, '["plan.md"]'
+  end
+
+  if method == "GET" and url:find("/api/file/comments", 1, true) then
+    return 200, '[{"id":"c_old","start_line":3,"end_line":4,"body":"old"}]'
+  end
+
+  if method == "POST" and url:find("/api/file/comments", 1, true) then
+    return 200, '{"id":"c_abc","start_line":1,"end_line":2,"body":"hi"}'
+  end
+
+  if method == "PUT" and url:find("/api/comment/c_abc%?path=plan%.md", 1) then
+    return 200, '{"id":"c_abc","start_line":1,"end_line":2,"body":"updated"}'
+  end
+
+  if method == "DELETE" and url:find("/api/comment/c_abc%?path=plan%.md", 1) then
+    return 204, ""
+  end
+
+  if method == "POST" and url:find("/api/finish", 1, true) then
+    return 200, '{"ok":true}'
+  end
+
+  return 500, '{"error":"unexpected"}'
+end
 
 local ready = c:wait_ready({ attempts = 2, sleep_ms = 0 })
 assert_eq(ready.mode, "files", "wait_ready.mode")

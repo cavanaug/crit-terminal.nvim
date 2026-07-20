@@ -14,7 +14,12 @@ local function decode(body)
     return nil
   end
 
-  return vim.json.decode(body)
+  local ok, result = pcall(vim.json.decode, body)
+  if not ok then
+    error("Crit JSON decode failed: " .. result, 0)
+  end
+
+  return result
 end
 
 local function trim_base_url(base_url)
@@ -81,7 +86,7 @@ end
 
 function Client:health()
   local response = self:_json_request("GET", "/api/health")
-  return response == nil or response.status == nil or response.status == "ok"
+  return response and response.status == "ok"
 end
 
 function Client:wait_ready(opts)
