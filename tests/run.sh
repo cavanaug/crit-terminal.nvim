@@ -5,7 +5,7 @@ cd "$ROOT"
 fail=0
 for t in tests/test_*.lua; do
   echo "RUN $t"
-  if ! nvim --headless -u tests/minimal_init.lua -c "luafile $t" -c qa 2>&1; then
+  if ! nvim --headless -u tests/minimal_init.lua -c "luafile $t" -c "if v:errmsg != '' | cquit | endif" -c qa 2>&1; then
     fail=1
   fi
 done
