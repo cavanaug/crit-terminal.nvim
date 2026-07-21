@@ -8,10 +8,10 @@ M.defaults = {
   author = nil,
   --- Poll interval ms for comment sync when SSE unavailable
   poll_ms = 1500,
-  --- Prefer render-markdown when available
-  render_markdown = true,
-  --- Keymap prefix under which-key +ai
-  leader = "<leader>ar",
+  --- Prefer render-markdown when available (off by default: heavy redraw while scrolling)
+  render_markdown = false,
+  --- Keymap prefix (LazyVim which-key)
+  leader = "<leader>r",
 }
 
 M.opts = nil

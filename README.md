@@ -10,7 +10,7 @@ Native LazyVim frontend for [Crit](https://crit.md). Crit stays the source of tr
   dependencies = { "folke/snacks.nvim" },
   opts = {},
   keys = {
-    { "<leader>ar", "<cmd>CritReview<cr>", desc = "Crit Review" },
+    { "<leader>r", "<cmd>CritReview<cr>", desc = "Crit Review" },
   },
 }
 ```
@@ -29,8 +29,8 @@ Starts Crit with `--no-open` (or reuses a running daemon), exports `CRIT_TERMINA
 
 - [ ] `crit` on `PATH`; plugin + Snacks
 - [ ] `./scripts/crit-terminal plan.md` opens plan workspace
-- [ ] Visual select + `<leader>arc` creates comment
+- [ ] Visual select + `<leader>rc` creates comment
 - [ ] Comment in Crit browser UI
 - [ ] Browser comment appears in Neovim ~2s
-- [ ] `<leader>arf` / `:CritFinish` writes artifact
+- [ ] `<leader>rf` / `:CritFinish` writes artifact
 - [ ] Without RenderMarkdown, plan still opens

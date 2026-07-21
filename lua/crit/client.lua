@@ -30,7 +30,7 @@ local function request_error(method, url, status, body)
   error(string.format("Crit request failed: %s %s -> %d %s", method, url, status, body or ""), 0)
 end
 
-function M._request(method, url, body)
+local function curl_args(method, url, body)
   local args = {
     "curl",
     "-sS",
@@ -50,7 +50,10 @@ function M._request(method, url, body)
     })
   end
 
-  local result = vim.system(args, { text = true }):wait()
+  return args
+end
+
+local function parse_curl_result(method, url, result)
   if result.code ~= 0 then
     error(string.format("Crit request failed: %s %s -> %s", method, url, result.stderr or result.stdout or ""), 0)
   end
@@ -62,6 +65,25 @@ function M._request(method, url, body)
   end
 
   return tonumber(status), response_body
+end
+
+function M._request(method, url, body)
+  local result = vim.system(curl_args(method, url, body), { text = true }):wait()
+  return parse_curl_result(method, url, result)
+end
+
+--- Non-blocking request. callback(err, status, body) — err is a string on failure.
+function M._request_async(method, url, body, callback)
+  vim.system(curl_args(method, url, body), { text = true }, function(result)
+    vim.schedule(function()
+      local ok, status_or_err, response_body = pcall(parse_curl_result, method, url, result)
+      if not ok then
+        callback(status_or_err)
+        return
+      end
+      callback(nil, status_or_err, response_body)
+    end)
+  end)
 end
 
 function M.new(base_url)
@@ -135,6 +157,29 @@ end
 
 function Client:list_file_comments(path)
   return self:_json_request("GET", "/api/file/comments?path=" .. q(path)) or {}
+end
+
+--- Async comments fetch for live sync. callback(err, comments_payload)
+function Client:list_file_comments_async(path, callback)
+  local url = self:_url("/api/file/comments?path=" .. q(path))
+  M._request_async("GET", url, nil, function(err, status, response_body)
+    if err then
+      callback(err)
+      return
+    end
+    if status < 200 or status >= 300 then
+      callback(string.format("Crit request failed: GET %s -> %d %s", url, status, response_body or ""))
+      return
+    end
+
+    local ok, decoded = pcall(decode, response_body)
+    if not ok then
+      callback(decoded)
+      return
+    end
+
+    callback(nil, decoded or {})
+  end)
 end
 
 function Client:add_file_comment(path, start_line, end_line, body)

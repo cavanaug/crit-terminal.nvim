@@ -83,11 +83,7 @@ local function jump_comment(workspace)
   vim.api.nvim_win_set_cursor(workspace.doc_win, { math.min(target, last_line), 0 })
 end
 
-local function render_markdown(workspace)
-  if not config.get().render_markdown or vim.fn.exists(":RenderMarkdown") ~= 2 then
-    return
-  end
-
+local function configure_markdown(workspace)
   vim.schedule(function()
     if not (workspace and workspace.doc_win and vim.api.nvim_win_is_valid(workspace.doc_win)) then
       return
@@ -95,7 +91,12 @@ local function render_markdown(workspace)
 
     local current = vim.api.nvim_get_current_win()
     vim.api.nvim_set_current_win(workspace.doc_win)
-    pcall(vim.cmd, "silent RenderMarkdown")
+    if config.get().render_markdown and vim.fn.exists(":RenderMarkdown") == 2 then
+      pcall(vim.cmd, "silent RenderMarkdown")
+    elseif vim.fn.exists(":RenderMarkdown") == 2 then
+      -- LazyVim often auto-attaches; disable so holding j stays responsive.
+      pcall(vim.cmd, "silent RenderMarkdown buf_disable")
+    end
     if vim.api.nvim_win_is_valid(current) then
       vim.api.nvim_set_current_win(current)
     end
@@ -156,28 +157,32 @@ function M.open(file)
   local doc_win = vim.api.nvim_get_current_win()
   local doc_buf = vim.api.nvim_get_current_buf()
 
-  local comments_buf = make_scratch("crit://comments", "markdown")
+  -- Keep comments pane as text so render-markdown does not attach/redraw it.
+  local comments_buf = make_scratch("crit://comments", "text")
   local status_buf = make_scratch("crit://status", "text")
 
   vim.cmd("botright vsplit")
   local comments_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(comments_win, comments_buf)
-  vim.cmd("vertical resize " .. math.max(24, math.floor(vim.o.columns * 0.3)))
 
   vim.api.nvim_set_current_win(doc_win)
   vim.cmd("botright split")
   local status_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(status_win, status_buf)
   vim.api.nvim_win_set_height(status_win, 1)
-  vim.wo[status_win].winfix = true
+  vim.wo[status_win].winfixheight = true
   vim.wo[status_win].statusline = " "
   vim.wo[status_win].number = false
   vim.wo[status_win].relativenumber = false
   vim.wo[status_win].signcolumn = "no"
   vim.wo[status_win].cursorline = false
 
+  -- Size comments after the status split so equalize doesn't leave a 50/50 layout.
+  local comments_width = math.max(24, math.floor(vim.o.columns / 3))
+  vim.api.nvim_win_set_width(comments_win, comments_width)
+  vim.api.nvim_set_option_value("winfixwidth", true, { win = comments_win })
+
   vim.api.nvim_set_current_win(doc_win)
-  vim.wo[doc_win].wrap = true
 
   local workspace = {
     doc_buf = doc_buf,
@@ -207,7 +212,7 @@ function M.open(file)
   })
 
   M.refresh()
-  render_markdown(workspace)
+  configure_markdown(workspace)
   keymaps.bind_workspace()
   sync.start()
 

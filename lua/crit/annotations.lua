@@ -3,7 +3,7 @@ local M = {
   sign_group = "crit_comments",
 }
 
-vim.fn.sign_define("CritComment", { text = "┃", texthl = "DiagnosticInfo" })
+vim.fn.sign_define("CritComment", { text = "|", texthl = "DiagnosticInfo" })
 
 function M.line_range(comment)
   local start_line = comment and (comment.start_line or comment.line or comment.line_number)
@@ -18,7 +18,8 @@ end
 
 function M.virt_text_for(comment)
   local body = (comment.body or ""):gsub("\n.*", "")
-  return "💬 " .. body
+  -- ASCII only: emoji/unicode in virt_text is a known slow-repaint source on WSL terminals.
+  return "| " .. body
 end
 
 function M.clear(buf)

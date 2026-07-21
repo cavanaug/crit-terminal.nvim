@@ -48,7 +48,7 @@ local function register_which_key(leader)
 end
 
 function M.setup()
-  local leader = config.get().leader or "<leader>ar"
+  local leader = config.get().leader or "<leader>r"
   if M.leader and M.leader ~= leader then
     del_map("n", M.leader)
     del_map({ "n", "v" }, M.leader .. "c")
