@@ -118,9 +118,14 @@ function M.status()
 end
 
 local function launch_crit(file)
-  local args = { "crit", "--no-open" }
-  if file then
-    table.insert(args, file)
+  local args
+  if is_markdown(file) then
+    args = { "crit", "plan", "--no-open", file }
+  else
+    args = { "crit", "--no-open" }
+    if file then
+      table.insert(args, file)
+    end
   end
 
   local result = vim.system(args, { text = true }):wait()
@@ -184,7 +189,7 @@ function M.review(opts)
   if mode == "plan" then
     plan_ui.open(loaded.file or file)
   else
-    code_ui.open()
+    code_ui.open(loaded.file or file)
   end
 
   return loaded
@@ -193,7 +198,11 @@ end
 function M.refresh()
   local crit_client, path = active_review()
   local loaded = state.load_from_client(crit_client, path)
-  plan_ui.refresh()
+  if M.mode == "code" then
+    code_ui.refresh()
+  else
+    plan_ui.refresh()
+  end
   return loaded
 end
 
@@ -292,7 +301,9 @@ function M.finish()
   M.client:finish()
   sync.stop()
   status_ui.set("finished")
-  if plan_ui.close then
+  if M.mode == "code" and code_ui.close then
+    code_ui.close()
+  elseif plan_ui.close then
     plan_ui.close()
   end
   return true

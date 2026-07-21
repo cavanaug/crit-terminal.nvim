@@ -32,6 +32,10 @@ client._request = function(method, url, body)
     return 200, '[{"id":"c_old","start_line":3,"end_line":4,"body":"old"}]'
   end
 
+  if method == "GET" and url:find("/api/file/diff", 1, true) then
+    return 200, "diff --git a/plan.md b/plan.md"
+  end
+
   if method == "POST" and url:find("/api/file/comments", 1, true) then
     return 200, '{"id":"c_abc","start_line":1,"end_line":2,"body":"hi"}'
   end
@@ -98,6 +102,10 @@ client._request = function(method, url, body)
     return 200, '[{"id":"c_old","start_line":3,"end_line":4,"body":"old"}]'
   end
 
+  if method == "GET" and url:find("/api/file/diff", 1, true) then
+    return 200, "diff --git a/plan.md b/plan.md"
+  end
+
   if method == "POST" and url:find("/api/file/comments", 1, true) then
     return 200, '{"id":"c_abc","start_line":1,"end_line":2,"body":"hi"}'
   end
@@ -130,6 +138,10 @@ assert(calls[#calls].url:find("/api/files/list", 1, true), "files endpoint")
 local comments = c:list_file_comments("docs/plan one.md")
 assert_eq(comments[1].id, "c_old", "comments[1].id")
 assert(calls[#calls].url:find("path=docs%%2Fplan%%20one%.md"), "encoded comments path")
+
+local diff = c:file_diff("docs/plan one.md")
+assert_eq(diff, "diff --git a/plan.md b/plan.md", "diff body")
+assert(calls[#calls].url:find("/api/file/diff%?path=docs%%2Fplan%%20one%.md"), "encoded diff path")
 
 local comment = c:add_file_comment("plan.md", 1, 2, "hi")
 assert_eq(comment.id, "c_abc", "comment.id")

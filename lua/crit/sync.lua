@@ -29,12 +29,19 @@ function M.start()
       return
     end
 
+    local function refresh_workspace()
+      if session.mode == "code" then
+        require("crit.ui.code").refresh()
+      else
+        require("crit.ui.plan").refresh()
+      end
+    end
+
     local ok, raw_comments = pcall(session.client.list_file_comments, session.client, state.file)
     local status = require("crit.ui.status")
-    local plan = require("crit.ui.plan")
     if not ok then
       status.set("disconnected")
-      plan.refresh()
+      refresh_workspace()
       return
     end
 
@@ -44,9 +51,9 @@ function M.start()
 
     if comment_signature(comments) ~= comment_signature(state.comments) then
       state.set_comments(comments)
-      plan.refresh()
+      refresh_workspace()
     elseif not was_connected then
-      plan.refresh()
+      refresh_workspace()
     end
   end))
 end

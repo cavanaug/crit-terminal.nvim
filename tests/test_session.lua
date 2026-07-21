@@ -50,4 +50,60 @@ path, comment = session.comment_at_cursor()
 assert_eq(path, "plan.md", "no comment path")
 assert_eq(comment, nil, "no comment match")
 
+do
+  local status_calls = 0
+  local launched
+  local orig_system = vim.system
+  local orig_wait = vim.wait
+  local orig_crit_on_path = session.crit_on_path
+  local orig_status = session.status
+
+  session.crit_on_path = function()
+    return true
+  end
+  session.status = function()
+    status_calls = status_calls + 1
+    if status_calls == 1 then
+      error("not running")
+    end
+    return {
+      daemon = {
+        running = true,
+        port = 44927,
+      },
+    }
+  end
+  vim.system = function(args, opts)
+    launched = {
+      args = args,
+      opts = opts,
+    }
+    return {
+      wait = function()
+        return { code = 0, stdout = "", stderr = "" }
+      end,
+    }
+  end
+  vim.wait = function()
+    return true
+  end
+
+  local base_url = session.ensure_daemon({
+    file = "plan.md",
+    status_attempts = 2,
+    status_sleep_ms = 0,
+  })
+
+  assert_eq(base_url, "http://127.0.0.1:44927", "ensure_daemon base url")
+  assert_eq(launched.args[1], "crit", "launch command")
+  assert_eq(launched.args[2], "plan", "plan subcommand")
+  assert_eq(launched.args[3], "--no-open", "plan no-open")
+  assert_eq(launched.args[4], "plan.md", "plan file")
+
+  vim.system = orig_system
+  vim.wait = orig_wait
+  session.crit_on_path = orig_crit_on_path
+  session.status = orig_status
+end
+
 print("test_session OK")

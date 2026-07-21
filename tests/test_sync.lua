@@ -34,6 +34,7 @@ do
     "boom",
   }
   local session = {
+    mode = "plan",
     client = {
       list_file_comments = function(_, path)
         assert_eq(path, "plan.md", "sync path")
@@ -108,6 +109,88 @@ do
 end
 
 do
+  local state = {
+    file = "main.lua",
+    comments = {},
+  }
+  function state.set_comments(comments)
+    state.comments = comments
+    return comments
+  end
+  local status = { text = "idle" }
+  function status.set(text)
+    status.text = text
+    return text
+  end
+  local code_refreshes = 0
+  local timer = {
+    start = function(self, timeout, repeat_ms, cb)
+      self.timeout = timeout
+      self.repeat_ms = repeat_ms
+      self.cb = cb
+    end,
+    stop = function(self)
+      self.stopped = true
+    end,
+    close = function(self)
+      self.closed = true
+    end,
+  }
+
+  package.loaded["crit.config"] = {
+    get = function()
+      return { poll_ms = 1500 }
+    end,
+  }
+  package.loaded["crit.state"] = state
+  package.loaded["crit.session"] = {
+    mode = "code",
+    client = {
+      list_file_comments = function(_, path)
+        assert_eq(path, "main.lua", "code sync path")
+        return {
+          comments = {
+            { id = "c1", body = "updated", start_line = 7 },
+          },
+        }
+      end,
+    },
+  }
+  package.loaded["crit.ui.status"] = status
+  package.loaded["crit.ui.plan"] = {
+    refresh = function()
+      error("plan refresh should not run in code mode")
+    end,
+  }
+  package.loaded["crit.ui.code"] = {
+    refresh = function()
+      code_refreshes = code_refreshes + 1
+    end,
+  }
+  package.loaded["crit.sync"] = nil
+
+  local orig_new_timer = vim.uv.new_timer
+  local orig_schedule_wrap = vim.schedule_wrap
+  vim.uv.new_timer = function()
+    return timer
+  end
+  vim.schedule_wrap = function(fn)
+    return fn
+  end
+
+  local sync = require("crit.sync")
+  sync.start()
+  timer.cb()
+  assert_eq(status.text, "connected", "code sync status")
+  assert_eq(code_refreshes, 1, "code refresh count")
+  assert_eq(state.comments[1].start_line, 7, "code comments updated")
+
+  sync.stop()
+  vim.uv.new_timer = orig_new_timer
+  vim.schedule_wrap = orig_schedule_wrap
+end
+
+do
   local sync_calls = 0
   local finish_calls = 0
   local status = {}
@@ -144,6 +227,7 @@ do
       finish_calls = finish_calls + 1
     end,
   }
+  session.mode = "plan"
 
   assert_eq(session.finish(), true, "finish return")
   assert_eq(finish_calls, 1, "client finish called")

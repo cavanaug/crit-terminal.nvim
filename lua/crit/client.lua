@@ -84,6 +84,16 @@ function Client:_json_request(method, path, body)
   return decode(response_body)
 end
 
+function Client:_text_request(method, path)
+  local url = self:_url(path)
+  local status, response_body = M._request(method, url)
+  if status < 200 or status >= 300 then
+    request_error(method, url, status, response_body)
+  end
+
+  return response_body or ""
+end
+
 function Client:health()
   local response = self:_json_request("GET", "/api/health")
   return response and response.status == "ok"
@@ -117,6 +127,10 @@ end
 
 function Client:files()
   return self:_json_request("GET", "/api/files/list") or {}
+end
+
+function Client:file_diff(path)
+  return self:_text_request("GET", "/api/file/diff?path=" .. q(path))
 end
 
 function Client:list_file_comments(path)

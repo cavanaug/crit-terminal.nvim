@@ -25,6 +25,7 @@ local function register_which_key(leader)
     wk.add({
       { leader, group = "Crit Review" },
       { leader .. "c", desc = "Add Crit Comment" },
+      { leader .. "d", desc = "Toggle Crit Diff" },
       { leader .. "e", desc = "Edit Crit Comment" },
       { leader .. "x", desc = "Delete Crit Comment" },
       { leader .. "r", desc = "Refresh Crit Comments" },
@@ -37,6 +38,7 @@ local function register_which_key(leader)
     wk.register({
       name = "Crit Review",
       c = "Add Crit Comment",
+      d = "Toggle Crit Diff",
       e = "Edit Crit Comment",
       f = "Finish Crit Review",
       r = "Refresh Crit Comments",
@@ -50,6 +52,7 @@ function M.setup()
   if M.leader and M.leader ~= leader then
     del_map("n", M.leader)
     del_map({ "n", "v" }, M.leader .. "c")
+    del_map("n", M.leader .. "d")
     del_map("n", M.leader .. "e")
     del_map("n", M.leader .. "x")
     del_map("n", M.leader .. "r")
@@ -64,6 +67,9 @@ function M.setup()
   set_map({ "n", "v" }, leader .. "c", function()
     require("crit.session").add_comment_on_selection()
   end, "Add Crit Comment")
+  set_map("n", leader .. "d", function()
+    require("crit.ui.code").toggle_diff()
+  end, "Toggle Crit Diff")
   set_map("n", leader .. "e", function()
     require("crit.session").edit_comment_at_cursor()
   end, "Edit Crit Comment")
