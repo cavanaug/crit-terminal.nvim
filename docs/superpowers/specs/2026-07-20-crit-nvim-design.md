@@ -3,7 +3,7 @@
 Native LazyVim/Neovim frontend for [Crit](https://crit.md) (tomasz-tomczyk/crit). Crit remains the backend and source of truth; Neovim is an alternative review client that can coexist with the browser UI.
 
 **Date:** 2026-07-20  
-**Status:** Draft — pending user review before implementation plan  
+**Status:** Approved  
 
 **Repo:** Neovim plugin (`crit-nvim`) + small shell entrypoint
 
