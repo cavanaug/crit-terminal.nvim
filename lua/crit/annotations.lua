@@ -5,6 +5,17 @@ local M = {
 
 vim.fn.sign_define("CritComment", { text = "┃", texthl = "DiagnosticInfo" })
 
+function M.line_range(comment)
+  local start_line = comment and (comment.start_line or comment.line or comment.line_number)
+  local end_line = comment and (comment.end_line or start_line)
+
+  if not start_line then
+    return nil
+  end
+
+  return start_line, end_line
+end
+
 function M.virt_text_for(comment)
   local body = (comment.body or ""):gsub("\n.*", "")
   return "💬 " .. body
@@ -19,13 +30,19 @@ end
 ---@param comments table[]
 function M.apply(buf, comments)
   M.clear(buf)
+  local line_count = vim.api.nvim_buf_line_count(buf)
   for _, c in ipairs(comments or {}) do
-    local line = math.max(0, (c.start_line or 1) - 1)
-    vim.fn.sign_place(0, M.sign_group, "CritComment", buf, { lnum = line + 1 })
-    vim.api.nvim_buf_set_extmark(buf, M.ns, line, 0, {
-      virt_text = { { M.virt_text_for(c), "Comment" } },
-      virt_text_pos = "eol",
-    })
+    local start_line = M.line_range(c)
+    if start_line then
+      local line = math.max(0, start_line - 1)
+      if line < line_count then
+        vim.fn.sign_place(0, M.sign_group, "CritComment", buf, { lnum = line + 1 })
+        vim.api.nvim_buf_set_extmark(buf, M.ns, line, 0, {
+          virt_text = { { M.virt_text_for(c), "Comment" } },
+          virt_text_pos = "eol",
+        })
+      end
+    end
   end
 end
 
