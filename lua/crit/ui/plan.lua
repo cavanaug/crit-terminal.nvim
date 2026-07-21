@@ -146,7 +146,10 @@ end
 function M.open(file)
   local Snacks = require_snacks()
   local crit_path = assert(file, "plan file is required")
-  local path = vim.fn.fnamemodify(crit_path, ":p")
+  local path = state.resolve_local_path(crit_path)
+  if not path or path == "" or vim.fn.filereadable(path) == 0 then
+    error("Crit plan file not readable: " .. tostring(crit_path) .. " (resolved: " .. tostring(path) .. ")", 0)
+  end
   state.local_path = path
 
   if M.workspace and M.workspace.layout and not M.workspace.layout.closed then

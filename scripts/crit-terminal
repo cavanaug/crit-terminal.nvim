@@ -26,9 +26,6 @@ if [[ -n "$FILE" ]]; then
   fi
 fi
 
-is_markdown() {
-  [[ "${1,,}" == *.md ]]
-}
 
 daemon_port() {
   local status_json
@@ -69,11 +66,8 @@ PY
 }
 
 if [[ -n "$ABS_FILE" ]]; then
-  if is_markdown "$ABS_FILE"; then
-    crit plan --no-open "$ABS_FILE" >/dev/null 2>&1 &
-  else
-    crit --no-open "$ABS_FILE" >/dev/null 2>&1 &
-  fi
+  # Prefer plain review of the caller's file (not `crit plan`, which copies into ~/.crit/plans).
+  crit --no-open "$ABS_FILE" >/dev/null 2>&1 &
 elif [[ -z "$(daemon_port)" ]]; then
   crit --no-open >/dev/null 2>&1 &
 fi

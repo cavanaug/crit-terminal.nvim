@@ -147,14 +147,11 @@ function M.status()
 end
 
 local function launch_crit(file)
-  local args
-  if is_markdown(file) then
-    args = { "crit", "plan", "--no-open", file }
-  else
-    args = { "crit", "--no-open" }
-    if file then
-      table.insert(args, file)
-    end
+  -- Use `crit --no-open <file>` (not `crit plan`) so the reviewed path stays
+  -- the caller's file under the project cwd. `crit plan` copies into ~/.crit/plans.
+  local args = { "crit", "--no-open" }
+  if file then
+    table.insert(args, file)
   end
 
   local result = vim.system(args, { text = true }):wait()

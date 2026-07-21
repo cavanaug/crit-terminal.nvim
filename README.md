@@ -6,7 +6,7 @@ Native LazyVim frontend for [Crit](https://crit.md). Crit stays the source of tr
 
 ```lua
 {
-  "YOUR_GITHUB_USER/crit-terminal.nvim",
+  "cavanaug/crit-terminal.nvim",
   dependencies = { "folke/snacks.nvim" },
   opts = {},
   keys = {

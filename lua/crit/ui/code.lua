@@ -90,7 +90,10 @@ local function set_doc_buf(workspace, buf)
 end
 
 local function ensure_file_buf(workspace, path)
-  local full_path = vim.fn.fnamemodify(path, ":p")
+  local full_path = state.resolve_local_path(path)
+  if not full_path or vim.fn.filereadable(full_path) == 0 then
+    error("Crit file not readable: " .. tostring(path), 0)
+  end
   local buf = vim.fn.bufadd(full_path)
   vim.fn.bufload(buf)
   state.local_path = full_path

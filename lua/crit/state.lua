@@ -45,6 +45,23 @@ local function pick_file(files, prefer_file)
   return files[1]
 end
 
+function M.resolve_local_path(crit_path)
+  if not crit_path or crit_path == "" then
+    return nil
+  end
+
+  if crit_path:sub(1, 1) == "/" then
+    return crit_path
+  end
+
+  local cwd = M.session and M.session.cwd
+  if type(cwd) == "string" and cwd ~= "" then
+    return cwd:gsub("/+$", "") .. "/" .. crit_path
+  end
+
+  return vim.fn.fnamemodify(crit_path, ":p")
+end
+
 function M.set_comments(comments)
   M.comments = comments or {}
   return M.comments

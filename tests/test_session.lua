@@ -101,9 +101,8 @@ do
   assert_eq(base_url, "http://127.0.0.1:44927", "ensure_daemon base url")
   assert_eq(launched_new, true, "ensure_daemon launch flag")
   assert_eq(launched.args[1], "crit", "launch command")
-  assert_eq(launched.args[2], "plan", "plan subcommand")
-  assert_eq(launched.args[3], "--no-open", "plan no-open")
-  assert_eq(launched.args[4], "plan.md", "plan file")
+  assert_eq(launched.args[2], "--no-open", "no-open flag")
+  assert_eq(launched.args[3], "plan.md", "plan file")
 
   vim.system = orig_system
   vim.wait = orig_wait
