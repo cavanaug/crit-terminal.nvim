@@ -1,4 +1,5 @@
 local client = require("crit.client")
+local annotations = require("crit.annotations")
 local config = require("crit.config")
 local state = require("crit.state")
 local code_ui = require("crit.ui.code")
@@ -9,6 +10,10 @@ local M = {
   client = nil,
   mode = nil,
 }
+
+local function notify_err(err)
+  vim.notify(tostring(err), vim.log.levels.ERROR)
+end
 
 local function is_markdown(path)
   return type(path) == "string" and path:lower():sub(-3) == ".md"
@@ -48,6 +53,54 @@ end
 
 local function crit_missing_error()
   error("Crit CLI not found on PATH; install from https://crit.md", 0)
+end
+
+local function active_review()
+  if not M.client then
+    error("No active Crit session", 0)
+  end
+
+  if not state.file or state.file == "" then
+    error("No active Crit file", 0)
+  end
+
+  return M.client, state.file
+end
+
+local function same_file(current, target)
+  return current == target
+    or vim.endswith(current, "/" .. target)
+    or vim.endswith(target, "/" .. current)
+end
+
+local function current_comment_file()
+  local path = state.file
+  if not path or path == "" then
+    return nil
+  end
+
+  local current = vim.api.nvim_buf_get_name(0)
+  if current == "" or same_file(current, path) then
+    return path
+  end
+
+  return nil
+end
+
+local function selection_range(opts)
+  if opts and opts.line1 and opts.line2 then
+    return math.min(opts.line1, opts.line2), math.max(opts.line1, opts.line2)
+  end
+
+  local mode = vim.fn.mode()
+  if mode:match("[vV\22]") then
+    local start_line = vim.fn.line("v")
+    local end_line = vim.fn.line(".")
+    return math.min(start_line, end_line), math.max(start_line, end_line)
+  end
+
+  local line = vim.api.nvim_win_get_cursor(0)[1]
+  return line, line
 end
 
 function M.status()
@@ -134,6 +187,100 @@ function M.review(opts)
   end
 
   return loaded
+end
+
+function M.refresh()
+  local crit_client, path = active_review()
+  local loaded = state.load_from_client(crit_client, path)
+  plan_ui.refresh()
+  return loaded
+end
+
+function M.add_comment_on_selection(opts)
+  local start_line, end_line = selection_range(opts)
+  local ok, crit_client, path = pcall(active_review)
+  if not ok then
+    notify_err(crit_client)
+    return
+  end
+
+  vim.ui.input({ prompt = "Review Comment: " }, function(body)
+    if body == nil then
+      return
+    end
+
+    local comment_ok, err = pcall(function()
+      crit_client:add_file_comment(path, start_line, end_line, body)
+      M.refresh()
+    end)
+
+    if not comment_ok then
+      notify_err(err)
+    end
+  end)
+end
+
+function M.comment_at_cursor()
+  local path = current_comment_file()
+  if not path then
+    return nil
+  end
+
+  local line = vim.api.nvim_win_get_cursor(0)[1]
+  for _, comment in ipairs(state.comments or {}) do
+    local start_line, end_line = annotations.line_range(comment)
+    if start_line and line >= start_line and line <= end_line then
+      return path, comment
+    end
+  end
+
+  return path, nil
+end
+
+function M.delete_comment_at_cursor()
+  local ok, err = pcall(function()
+    local crit_client, path = active_review()
+    local _, comment = M.comment_at_cursor()
+    if not comment or not comment.id then
+      error("No Crit comment at cursor", 0)
+    end
+
+    crit_client:delete_comment(path, comment.id)
+    M.refresh()
+  end)
+
+  if not ok then
+    notify_err(err)
+  end
+end
+
+function M.edit_comment_at_cursor()
+  local path, comment = M.comment_at_cursor()
+  if not path or not comment or not comment.id then
+    notify_err("No Crit comment at cursor")
+    return
+  end
+
+  local crit_client = M.client
+  if not crit_client then
+    notify_err("No active Crit session")
+    return
+  end
+
+  vim.ui.input({ prompt = "Review Comment: ", default = comment.body or "" }, function(body)
+    if body == nil then
+      return
+    end
+
+    local ok, err = pcall(function()
+      crit_client:update_comment(path, comment.id, body)
+      M.refresh()
+    end)
+
+    if not ok then
+      notify_err(err)
+    end
+  end)
 end
 
 function M.finish()
