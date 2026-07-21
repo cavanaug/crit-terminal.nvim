@@ -60,18 +60,36 @@ local function comment_body(comment)
   return body ~= "" and body or "(empty)"
 end
 
-local function render_comments(buf)
+local function render_comments(workspace)
   local lines = { "Comments", "" }
+  workspace.comment_lines = {}
 
   if #state.comments == 0 then
     table.insert(lines, "No comments")
   else
     for _, comment in ipairs(state.comments) do
       table.insert(lines, string.format("%s — %s", comment_range(comment), comment_body(comment)))
+      local start_line = annotations.line_range(comment)
+      if start_line then
+        workspace.comment_lines[#lines] = start_line
+      end
     end
   end
 
-  set_scratch_lines(buf, lines)
+  set_scratch_lines(workspace.comments_buf, lines)
+end
+
+local function jump_comment(workspace)
+  local line = vim.api.nvim_win_get_cursor(0)[1]
+  local target = workspace and workspace.comment_lines and workspace.comment_lines[line] or nil
+  if not target or not (workspace and workspace.doc_win and workspace.doc_win:win_valid()) then
+    return
+  end
+
+  workspace.doc_win:focus()
+  local buf = vim.api.nvim_win_get_buf(0)
+  local last_line = vim.api.nvim_buf_line_count(buf)
+  vim.api.nvim_win_set_cursor(0, { math.min(target, last_line), 0 })
 end
 
 local function render_markdown(workspace)
@@ -119,7 +137,7 @@ function M.refresh()
     return
   end
 
-  render_comments(workspace.comments_buf)
+  render_comments(workspace)
   annotations.clear(workspace.doc_buf)
   annotations.apply(workspace.doc_buf, state.comments)
   status.render(workspace.status_buf)
@@ -127,8 +145,9 @@ end
 
 function M.open(file)
   local Snacks = require_snacks()
-  local path = vim.fn.fnamemodify(assert(file, "plan file is required"), ":p")
-  state.file = path
+  local crit_path = assert(file, "plan file is required")
+  local path = vim.fn.fnamemodify(crit_path, ":p")
+  state.local_path = path
 
   if M.workspace and M.workspace.layout and not M.workspace.layout.closed then
     close_workspace()
@@ -212,6 +231,14 @@ function M.open(file)
   if workspace.doc_win:win_valid() then
     workspace.doc_win:focus()
   end
+
+  vim.keymap.set("n", "<CR>", function()
+    jump_comment(workspace)
+  end, {
+    buffer = comments_buf,
+    silent = true,
+    desc = "Jump to Crit comment",
+  })
 
   M.refresh()
   render_markdown(workspace)

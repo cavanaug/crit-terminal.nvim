@@ -26,13 +26,39 @@ function M.clear(buf)
   vim.fn.sign_unplace(M.sign_group, { buffer = buf })
 end
 
+local function anchor_text(anchor)
+  if type(anchor) ~= "string" or anchor == "" then
+    return nil
+  end
+
+  for line in anchor:gmatch("[^\r\n]+") do
+    line = vim.trim(line)
+    if line ~= "" then
+      return line
+    end
+  end
+end
+
+local function anchor_line(buf, anchor)
+  local text = anchor_text(anchor)
+  if not text then
+    return nil
+  end
+
+  for idx, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
+    if line:find(text, 1, true) then
+      return idx
+    end
+  end
+end
+
 ---@param buf integer
 ---@param comments table[]
 function M.apply(buf, comments)
   M.clear(buf)
   local line_count = vim.api.nvim_buf_line_count(buf)
   for _, c in ipairs(comments or {}) do
-    local start_line = M.line_range(c)
+    local start_line = anchor_line(buf, c.anchor) or M.line_range(c)
     if start_line then
       local line = math.max(0, start_line - 1)
       if line < line_count then

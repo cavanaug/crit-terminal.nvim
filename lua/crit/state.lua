@@ -2,6 +2,7 @@ local M = {
   comments = {},
   file = nil,
   files = {},
+  local_path = nil,
   session = nil,
 }
 
@@ -64,6 +65,7 @@ function M.load_from_client(client, prefer_file)
   M.session = session
   M.files = files
   M.file = file
+  M.local_path = nil
   M.set_comments(comments)
 
   return {

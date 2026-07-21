@@ -8,7 +8,7 @@ do
   local state = {
     file = "plan.md",
     comments = {
-      { id = "c1", body = "same" },
+      { id = "c1", body = "same", start_line = 1, end_line = 1 },
     },
   }
   function state.set_comments(comments)
@@ -29,8 +29,8 @@ do
     end,
   }
   local responses = {
-    { comments = { { id = "c1", body = "same" } } },
-    { comments = { { id = "c1", body = "changed" } } },
+    { comments = { { id = "c1", body = "same", start_line = 1, end_line = 1 } } },
+    { comments = { { id = "c1", body = "same", start_line = 4, end_line = 5 } } },
     "boom",
   }
   local session = {
@@ -91,8 +91,8 @@ do
   assert_eq(state.comments[1].body, "same", "same comments unchanged")
 
   timer.cb()
-  assert_eq(refreshes, 2, "refresh on comment change")
-  assert_eq(state.comments[1].body, "changed", "changed comments stored")
+  assert_eq(refreshes, 2, "refresh on comment move")
+  assert_eq(state.comments[1].start_line, 4, "moved comments stored")
 
   timer.cb()
   assert_eq(status.text, "disconnected", "disconnect status")

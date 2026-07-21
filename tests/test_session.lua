@@ -17,6 +17,10 @@ assert_eq(session.base_url_from_status(status), "http://127.0.0.1:44927")
 assert_eq(session.detect_mode({ path = "plan.md" }), "plan")
 assert_eq(session.detect_mode({ path = "foo.go" }), "code")
 assert_eq(session.detect_mode({ file = "x.md" }), "plan")
+assert_eq(session.mode_from_session({ mode = "files" }, { "plan.md" }), "plan")
+assert_eq(session.mode_from_session({ mode = "files" }, { "docs/plan.md", "notes.md" }), "plan")
+assert_eq(session.mode_from_session({ mode = "plan" }, { "main.lua" }), "plan")
+assert_eq(session.mode_from_session({ mode = "files" }, { "main.lua" }), "code")
 
 local buf = vim.api.nvim_create_buf(false, true)
 vim.api.nvim_set_current_buf(buf)
@@ -88,13 +92,14 @@ do
     return true
   end
 
-  local base_url = session.ensure_daemon({
+  local base_url, launched_new = session.ensure_daemon({
     file = "plan.md",
     status_attempts = 2,
     status_sleep_ms = 0,
   })
 
   assert_eq(base_url, "http://127.0.0.1:44927", "ensure_daemon base url")
+  assert_eq(launched_new, true, "ensure_daemon launch flag")
   assert_eq(launched.args[1], "crit", "launch command")
   assert_eq(launched.args[2], "plan", "plan subcommand")
   assert_eq(launched.args[3], "--no-open", "plan no-open")

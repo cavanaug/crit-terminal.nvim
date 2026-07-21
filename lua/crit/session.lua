@@ -27,6 +27,20 @@ local function current_markdown_buffer()
   end
 end
 
+local function all_markdown(files)
+  if #files == 0 then
+    return false
+  end
+
+  for _, path in ipairs(files) do
+    if not is_markdown(path) then
+      return false
+    end
+  end
+
+  return true
+end
+
 function M.parse_status_json(body)
   local ok, decoded = pcall(vim.json.decode, body)
   if not ok then
@@ -46,6 +60,21 @@ end
 function M.detect_mode(opts)
   opts = opts or {}
   return is_markdown(opts.path or opts.file) and "plan" or "code"
+end
+
+function M.mode_from_session(session_info, files)
+  files = files or {}
+
+  if all_markdown(files) then
+    return "plan"
+  end
+
+  local reported = session_info and session_info.mode or nil
+  if reported == "plan" then
+    return "plan"
+  end
+
+  return "code"
 end
 
 function M.crit_on_path()
@@ -150,7 +179,7 @@ function M.ensure_daemon(opts)
   if ok then
     local status_base_url = M.base_url_from_status(raw_status)
     if status_base_url then
-      return status_base_url
+      return status_base_url, false
     end
   end
 
@@ -161,7 +190,7 @@ function M.ensure_daemon(opts)
     if ok then
       local status_base_url = M.base_url_from_status(raw_status)
       if status_base_url then
-        return status_base_url
+        return status_base_url, true
       end
     end
     vim.wait(opts.status_sleep_ms or 250)
@@ -174,22 +203,30 @@ function M.review(opts)
   opts = opts or {}
 
   local file = opts.file or opts.path or current_markdown_buffer()
-  local mode = M.detect_mode({ file = file })
-  local base_url = M.ensure_daemon(vim.tbl_extend("force", opts, { file = file }))
+  local base_url, launched = M.ensure_daemon(vim.tbl_extend("force", opts, { file = file }))
   local crit_client = client.new(base_url)
 
   crit_client:wait_ready()
 
   M.client = crit_client
-  M.mode = mode
 
   local loaded = state.load_from_client(crit_client, file)
+  local mode = (launched and file) and M.detect_mode({ file = file }) or M.mode_from_session(loaded.session, loaded.files)
+  local attached_file = loaded.file
+  if not launched and file and attached_file and not same_file(attached_file, file) then
+    vim.notify(
+      string.format("Crit daemon already running for %s; attached active Crit session", attached_file),
+      vim.log.levels.WARN
+    )
+  end
+
+  M.mode = mode
   status_ui.set("connected")
 
   if mode == "plan" then
-    plan_ui.open(loaded.file or file)
+    plan_ui.open(attached_file or file)
   else
-    code_ui.open(loaded.file or file)
+    code_ui.open(attached_file or file)
   end
 
   return loaded

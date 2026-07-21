@@ -93,6 +93,7 @@ local function ensure_file_buf(workspace, path)
   local full_path = vim.fn.fnamemodify(path, ":p")
   local buf = vim.fn.bufadd(full_path)
   vim.fn.bufload(buf)
+  state.local_path = full_path
 
   if workspace.file_buf and workspace.file_buf ~= buf and vim.api.nvim_buf_is_valid(workspace.file_buf) then
     annotations.clear(workspace.file_buf)
@@ -135,16 +136,34 @@ end
 
 local function render_comments(workspace)
   local lines = { "Comments", "" }
+  workspace.comment_lines = {}
 
   if #state.comments == 0 then
     table.insert(lines, "No comments")
   else
     for _, comment in ipairs(state.comments) do
       table.insert(lines, string.format("%s - %s", comment_range(comment), comment_body(comment)))
+      local start_line = annotations.line_range(comment)
+      if start_line then
+        workspace.comment_lines[#lines] = start_line
+      end
     end
   end
 
   set_scratch_lines(workspace.comments_buf, lines)
+end
+
+local function jump_comment(workspace)
+  local line = vim.api.nvim_win_get_cursor(0)[1]
+  local target = workspace and workspace.comment_lines and workspace.comment_lines[line] or nil
+  if not target or not (workspace and workspace.doc_win and workspace.doc_win:win_valid()) then
+    return
+  end
+
+  workspace.doc_win:focus()
+  local buf = vim.api.nvim_win_get_buf(0)
+  local last_line = vim.api.nvim_buf_line_count(buf)
+  vim.api.nvim_win_set_cursor(0, { math.min(target, last_line), 0 })
 end
 
 local function render_document(workspace)
@@ -296,7 +315,6 @@ end
 function M.open(file)
   local Snacks = require_snacks()
   local initial_file = file or state.file or state.files[1]
-  state.file = initial_file
 
   if M.workspace and M.workspace.layout and not M.workspace.layout.closed then
     close_workspace()
@@ -413,6 +431,14 @@ function M.open(file)
     buffer = files_buf,
     silent = true,
     desc = "Open Crit file",
+  })
+
+  vim.keymap.set("n", "<CR>", function()
+    jump_comment(workspace)
+  end, {
+    buffer = comments_buf,
+    silent = true,
+    desc = "Jump to Crit comment",
   })
 
   if initial_file then

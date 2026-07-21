@@ -12,6 +12,9 @@ local function comment_signature(comments)
     parts[#parts + 1] = table.concat({
       tostring(comment.id or ""),
       tostring(comment.body or comment.text or ""),
+      tostring(comment.start_line or comment.line or comment.line_number or ""),
+      tostring(comment.end_line or comment.start_line or comment.line or comment.line_number or ""),
+      tostring(comment.anchor or ""),
     }, ":")
   end
 
