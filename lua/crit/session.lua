@@ -5,6 +5,7 @@ local state = require("crit.state")
 local code_ui = require("crit.ui.code")
 local plan_ui = require("crit.ui.plan")
 local status_ui = require("crit.ui.status")
+local sync = require("crit.sync")
 
 local M = {
   client = nil,
@@ -289,7 +290,11 @@ function M.finish()
   end
 
   M.client:finish()
+  sync.stop()
   status_ui.set("finished")
+  if plan_ui.close then
+    plan_ui.close()
+  end
   return true
 end
 

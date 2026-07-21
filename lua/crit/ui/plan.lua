@@ -109,6 +109,10 @@ local function close_workspace()
   M.workspace = nil
 end
 
+function M.close()
+  close_workspace()
+end
+
 function M.refresh()
   local workspace = M.workspace
   if not workspace then
