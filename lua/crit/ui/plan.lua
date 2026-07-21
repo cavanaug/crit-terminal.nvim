@@ -9,15 +9,6 @@ local M = {
   workspace = nil,
 }
 
-local function require_snacks()
-  local ok, snacks = pcall(require, "snacks")
-  if not ok or not snacks or not snacks.layout or not snacks.win then
-    error("crit-terminal.nvim plan UI requires snacks.nvim layout support", 0)
-  end
-
-  return snacks
-end
-
 local function set_scratch_lines(buf, lines)
   if not (buf and vim.api.nvim_buf_is_valid(buf)) then
     return
@@ -82,14 +73,14 @@ end
 local function jump_comment(workspace)
   local line = vim.api.nvim_win_get_cursor(0)[1]
   local target = workspace and workspace.comment_lines and workspace.comment_lines[line] or nil
-  if not target or not (workspace and workspace.doc_win and workspace.doc_win:win_valid()) then
+  if not target or not (workspace and workspace.doc_win and vim.api.nvim_win_is_valid(workspace.doc_win)) then
     return
   end
 
-  workspace.doc_win:focus()
-  local buf = vim.api.nvim_win_get_buf(0)
+  vim.api.nvim_set_current_win(workspace.doc_win)
+  local buf = vim.api.nvim_win_get_buf(workspace.doc_win)
   local last_line = vim.api.nvim_buf_line_count(buf)
-  vim.api.nvim_win_set_cursor(0, { math.min(target, last_line), 0 })
+  vim.api.nvim_win_set_cursor(workspace.doc_win, { math.min(target, last_line), 0 })
 end
 
 local function render_markdown(workspace)
@@ -98,12 +89,12 @@ local function render_markdown(workspace)
   end
 
   vim.schedule(function()
-    if not (workspace and workspace.doc_win and workspace.doc_win:win_valid()) then
+    if not (workspace and workspace.doc_win and vim.api.nvim_win_is_valid(workspace.doc_win)) then
       return
     end
 
     local current = vim.api.nvim_get_current_win()
-    workspace.doc_win:focus()
+    vim.api.nvim_set_current_win(workspace.doc_win)
     pcall(vim.cmd, "silent RenderMarkdown")
     if vim.api.nvim_win_is_valid(current) then
       vim.api.nvim_set_current_win(current)
@@ -118,10 +109,14 @@ local function close_workspace()
   end
 
   sync.stop()
-  annotations.clear(workspace.doc_buf)
+  if workspace.doc_buf and vim.api.nvim_buf_is_valid(workspace.doc_buf) then
+    annotations.clear(workspace.doc_buf)
+  end
 
-  if workspace.layout and not workspace.layout.closed then
-    workspace.layout:close()
+  -- Collapse back to the document in this tab.
+  if workspace.doc_win and vim.api.nvim_win_is_valid(workspace.doc_win) then
+    vim.api.nvim_set_current_win(workspace.doc_win)
+    pcall(vim.cmd, "only")
   end
 
   M.workspace = nil
@@ -144,7 +139,6 @@ function M.refresh()
 end
 
 function M.open(file)
-  local Snacks = require_snacks()
   local crit_path = assert(file, "plan file is required")
   local path = state.resolve_local_path(crit_path)
   if not path or path == "" or vim.fn.filereadable(path) == 0 then
@@ -152,88 +146,49 @@ function M.open(file)
   end
   state.local_path = path
 
-  if M.workspace and M.workspace.layout and not M.workspace.layout.closed then
+  if M.workspace then
     close_workspace()
   end
 
-  local doc_buf = vim.fn.bufadd(path)
-  vim.fn.bufload(doc_buf)
+  -- Take over the current tab with real splits (no float over an empty buffer).
+  vim.cmd("only")
+  vim.cmd.edit(vim.fn.fnameescape(path))
+  local doc_win = vim.api.nvim_get_current_win()
+  local doc_buf = vim.api.nvim_get_current_buf()
 
   local comments_buf = make_scratch("crit://comments", "markdown")
   local status_buf = make_scratch("crit://status", "text")
 
+  vim.cmd("botright vsplit")
+  local comments_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(comments_win, comments_buf)
+  vim.cmd("vertical resize " .. math.max(24, math.floor(vim.o.columns * 0.3)))
+
+  vim.api.nvim_set_current_win(doc_win)
+  vim.cmd("botright split")
+  local status_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(status_win, status_buf)
+  vim.api.nvim_win_set_height(status_win, 1)
+  vim.wo[status_win].winfix = true
+  vim.wo[status_win].statusline = " "
+  vim.wo[status_win].number = false
+  vim.wo[status_win].relativenumber = false
+  vim.wo[status_win].signcolumn = "no"
+  vim.wo[status_win].cursorline = false
+
+  vim.api.nvim_set_current_win(doc_win)
+  vim.wo[doc_win].wrap = true
+
   local workspace = {
     doc_buf = doc_buf,
+    doc_win = doc_win,
     comments_buf = comments_buf,
+    comments_win = comments_win,
     status_buf = status_buf,
+    status_win = status_win,
   }
 
-  workspace.doc_win = Snacks.win({
-    buf = doc_buf,
-    show = false,
-    minimal = false,
-    fixbuf = true,
-    wo = {
-      wrap = true,
-    },
-  })
-
-  workspace.comments_win = Snacks.win({
-    buf = comments_buf,
-    show = false,
-    fixbuf = true,
-    wo = {
-      wrap = true,
-    },
-  })
-
-  workspace.status_win = Snacks.win({
-    buf = status_buf,
-    show = false,
-    fixbuf = true,
-    focusable = false,
-    wo = {
-      wrap = false,
-      winbar = "",
-    },
-  })
-
-  workspace.layout = Snacks.layout.new({
-    show = false,
-    wins = {
-      document = workspace.doc_win,
-      comments = workspace.comments_win,
-      status = workspace.status_win,
-    },
-    layout = {
-      position = "float",
-      width = 0.9,
-      height = 0.9,
-      border = "rounded",
-      title = " Crit Plan ",
-      box = "vertical",
-      {
-        box = "horizontal",
-        border = "none",
-        { win = "document", width = 0.7, border = "none" },
-        { win = "comments", width = 0.3, border = "left" },
-      },
-      { win = "status", height = 1, border = "top" },
-    },
-    on_close = function()
-      sync.stop()
-      annotations.clear(doc_buf)
-      if M.workspace == workspace then
-        M.workspace = nil
-      end
-    end,
-  })
-
   M.workspace = workspace
-  workspace.layout:show()
-  if workspace.doc_win:win_valid() then
-    workspace.doc_win:focus()
-  end
 
   vim.keymap.set("n", "<CR>", function()
     jump_comment(workspace)
@@ -241,6 +196,14 @@ function M.open(file)
     buffer = comments_buf,
     silent = true,
     desc = "Jump to Crit comment",
+  })
+
+  vim.keymap.set("n", "q", function()
+    M.close()
+  end, {
+    buffer = comments_buf,
+    silent = true,
+    desc = "Close Crit review",
   })
 
   M.refresh()

@@ -323,6 +323,9 @@ function M.open(file)
     close_workspace()
   end
 
+  -- Take over the current tab; avoid floating over an empty buffer.
+  vim.cmd("only")
+
   local files_buf = make_scratch("crit://files", "text")
   local comments_buf = make_scratch("crit://comments", "markdown")
   local diff_buf = make_scratch("crit://diff", "text")
@@ -384,6 +387,7 @@ function M.open(file)
 
   workspace.layout = Snacks.layout.new({
     show = false,
+    fullscreen = true,
     wins = {
       files = workspace.files_win,
       document = workspace.doc_win,
@@ -391,11 +395,10 @@ function M.open(file)
       status = workspace.status_win,
     },
     layout = {
-      position = "float",
-      width = 0.9,
-      height = 0.9,
-      border = "rounded",
-      title = " Crit Code ",
+      -- Full-editor layout (not a float over an empty buffer).
+      width = 0,
+      height = 0,
+      border = "none",
       box = "vertical",
       {
         box = "horizontal",

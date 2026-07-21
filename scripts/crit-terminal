@@ -89,6 +89,13 @@ fi
 export CRIT_TERMINAL_BASE_URL="http://127.0.0.1:${PORT}"
 export CRIT_TERMINAL_FILE="$ABS_FILE"
 
-exec nvim \
-  -c "lua require('crit').setup({ base_url = vim.env.CRIT_TERMINAL_BASE_URL })" \
+# Open the file as the first buffer so the review workspace replaces it (no empty float underlay).
+NVIM_ARGS=(nvim)
+if [[ -n "$ABS_FILE" ]]; then
+  NVIM_ARGS+=("$ABS_FILE")
+fi
+NVIM_ARGS+=(
+  -c "lua require('crit').setup({ base_url = vim.env.CRIT_TERMINAL_BASE_URL })"
   -c "lua require('crit').review({ file = vim.env.CRIT_TERMINAL_FILE ~= '' and vim.env.CRIT_TERMINAL_FILE or nil, base_url = vim.env.CRIT_TERMINAL_BASE_URL })"
+)
+exec "${NVIM_ARGS[@]}"
