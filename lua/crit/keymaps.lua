@@ -49,7 +49,7 @@ function M.setup()
   local leader = config.get().leader or "<leader>ar"
   if M.leader and M.leader ~= leader then
     del_map("n", M.leader)
-    del_map({ "n", "x" }, M.leader .. "c")
+    del_map({ "n", "v" }, M.leader .. "c")
     del_map("n", M.leader .. "e")
     del_map("n", M.leader .. "x")
     del_map("n", M.leader .. "r")
@@ -61,7 +61,7 @@ function M.setup()
   M.leader = leader
 
   set_map("n", leader, "<cmd>CritReview<cr>", "Open Crit Review")
-  set_map({ "n", "x" }, leader .. "c", function()
+  set_map({ "n", "v" }, leader .. "c", function()
     require("crit.session").add_comment_on_selection()
   end, "Add Crit Comment")
   set_map("n", leader .. "e", function()

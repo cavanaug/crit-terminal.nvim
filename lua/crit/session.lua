@@ -205,7 +205,7 @@ function M.add_comment_on_selection(opts)
   end
 
   vim.ui.input({ prompt = "Review Comment: " }, function(body)
-    if body == nil then
+    if body == nil or body == "" then
       return
     end
 
@@ -268,7 +268,7 @@ function M.edit_comment_at_cursor()
   end
 
   vim.ui.input({ prompt = "Review Comment: ", default = comment.body or "" }, function(body)
-    if body == nil then
+    if body == nil or body == "" then
       return
     end
 
