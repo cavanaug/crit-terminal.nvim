@@ -16,3 +16,11 @@ Native LazyVim frontend for [Crit](https://crit.md). Crit stays the source of tr
 ```
 
 Requires `crit` on `PATH`.
+
+## CLI
+
+```bash
+./scripts/crit-nvim path/to/plan.md
+```
+
+Starts Crit with `--no-open` (or reuses a running daemon), exports `CRIT_NVIM_BASE_URL`, and opens Neovim directly into the Crit review workspace.
