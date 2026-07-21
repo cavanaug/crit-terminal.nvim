@@ -1,4 +1,4 @@
-# crit-nvim
+# crit-terminal.nvim
 
 Native LazyVim frontend for [Crit](https://crit.md). Crit stays the source of truth.
 
@@ -6,7 +6,7 @@ Native LazyVim frontend for [Crit](https://crit.md). Crit stays the source of tr
 
 ```lua
 {
-  "YOUR_GITHUB_USER/crit-nvim",
+  "YOUR_GITHUB_USER/crit-terminal.nvim",
   dependencies = { "folke/snacks.nvim" },
   opts = {},
   keys = {
@@ -15,20 +15,20 @@ Native LazyVim frontend for [Crit](https://crit.md). Crit stays the source of tr
 }
 ```
 
-Requires `crit` on `PATH`.
+Requires `crit` on `PATH`. Lua module remains `require("crit")`.
 
 ## CLI
 
 ```bash
-./scripts/crit-nvim path/to/plan.md
+./scripts/crit-terminal path/to/plan.md
 ```
 
-Starts Crit with `--no-open` (or reuses a running daemon), exports `CRIT_NVIM_BASE_URL`, and opens Neovim directly into the Crit review workspace.
+Starts Crit with `--no-open` (or reuses a running daemon), exports `CRIT_TERMINAL_BASE_URL`, and opens Neovim directly into the Crit review workspace.
 
 ## Smoke checklist
 
 - [ ] `crit` on `PATH`; plugin + Snacks
-- [ ] `./scripts/crit-nvim plan.md` opens plan workspace
+- [ ] `./scripts/crit-terminal plan.md` opens plan workspace
 - [ ] Visual select + `<leader>arc` creates comment
 - [ ] Comment in Crit browser UI
 - [ ] Browser comment appears in Neovim ~2s

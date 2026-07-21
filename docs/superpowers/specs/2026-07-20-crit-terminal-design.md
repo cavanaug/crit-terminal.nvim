@@ -1,11 +1,11 @@
-# crit-nvim Design
+# crit-terminal.nvim Design
 
 Native LazyVim/Neovim frontend for [Crit](https://crit.md) (tomasz-tomczyk/crit). Crit remains the backend and source of truth; Neovim is an alternative review client that can coexist with the browser UI.
 
 **Date:** 2026-07-20  
 **Status:** Approved  
 
-**Repo:** Neovim plugin (`crit-nvim`) + small shell entrypoint
+**Repo:** Neovim plugin (`crit-terminal.nvim`) + small shell entrypoint
 
 ---
 
@@ -21,7 +21,7 @@ Native LazyVim/Neovim frontend for [Crit](https://crit.md) (tomasz-tomczyk/crit)
 - Finish review via Crit’s normal completion workflow (`POST /api/finish`)
 - Stay compatible with existing Crit agent integrations (plugin never owns agent protocol)
 - Allow browser and Neovim clients on the same session
-- Ship a shell CLI `crit-nvim` that starts/finds Crit and opens Neovim into the workspace
+- Ship a shell CLI `crit-terminal` that starts/finds Crit and opens Neovim into the workspace
 - Live sync comments via Crit events (or short poll fallback)
 
 ### Secondary (same plugin, polish after plan path works)
@@ -44,7 +44,7 @@ Native LazyVim/Neovim frontend for [Crit](https://crit.md) (tomasz-tomczyk/crit)
 | Topic | Choice |
 |---|---|
 | Architecture | Thin HTTP client + Snacks UI (Approach 1) |
-| Packaging | LazyVim-first Neovim plugin + `crit-nvim` CLI |
+| Packaging | LazyVim-first Neovim plugin + `crit-terminal` CLI |
 | Session | Attach or launch Crit (`--no-open` when plugin owns the UI) |
 | v1 priority | Plan/markdown mode first; code mode skeleton OK |
 | Layout | Native Snacks panes (not Diffview-centric, not LazyGit-only) |
@@ -59,7 +59,7 @@ Native LazyVim/Neovim frontend for [Crit](https://crit.md) (tomasz-tomczyk/crit)
 ## Architecture
 
 ```text
-crit-nvim (shell)          Neovim (LazyVim plugin)
+crit-terminal (shell)               crit-terminal.nvim (plugin)
        │                         │
        │  start/find Crit        │  Snacks workspace
        │  --no-open              │  plan | code mode
@@ -75,7 +75,7 @@ crit-nvim (shell)          Neovim (LazyVim plugin)
 
 1. Crit owns sessions, comments, finish/review files, and agent protocol.
 2. The plugin is an HTTP client + Neovim UX only.
-3. Two entrypoints share one core: `crit-nvim` (CLI) and `:CritReview` / `<leader>ar` (in-editor).
+3. Two entrypoints share one core: `crit-terminal` (CLI) and `:CritReview` / `<leader>ar` (in-editor).
 4. Modes share `client` + `state`; UI layouts differ.
 
 ---
@@ -84,7 +84,7 @@ crit-nvim (shell)          Neovim (LazyVim plugin)
 
 | Module | Responsibility |
 |---|---|
-| `cli/crit-nvim` | Resolve cwd/file → start or find Crit → open `nvim` with workspace bootstrap |
+| `cli/crit-terminal` | Resolve cwd/file → start or find Crit → open `nvim` with workspace bootstrap |
 | `session` | Discover base URL (`crit status --json`, session metadata); launch `crit plan <file>` or `crit` as needed; detect plan vs code mode |
 | `client` | HTTP: health, comments CRUD, files list, finish; `/api/events` subscribe (poll fallback) |
 | `state` | In-memory mirror of session for UI + annotations; never durable storage |
@@ -148,7 +148,7 @@ Optimized for **multi-file change review**.
 ### Start (CLI)
 
 ```text
-crit-nvim [file?]
+crit-terminal [file?]
   → session: find Crit or launch
        plan file → crit plan --no-open …
        else → attach or crit --no-open …
@@ -262,7 +262,7 @@ If an endpoint differs by Crit version, adapt the client — do not invent a par
 | Layer | Scope |
 |---|---|
 | Unit | `client` parsing/mapping with fixtures; `session` status JSON; `annotations` placement/anchor smoke |
-| Manual smoke | `crit-nvim plan.md` → comment → visible in browser → finish → artifact exists |
+| Manual smoke | `crit-terminal plan.md` → comment → visible in browser → finish → artifact exists |
 | Deferred | Full Snacks layout headless tests |
 
 Ship a small assert-style test entry and a README smoke checklist.
@@ -272,7 +272,7 @@ Ship a small assert-style test entry and a README smoke checklist.
 ## Repository shape (intended)
 
 ```text
-crit-nvim/
+crit-terminal.nvim/
   lua/crit/
     init.lua
     client.lua
@@ -284,7 +284,7 @@ crit-nvim/
     commands.lua
     keymaps.lua
   plugin/crit.lua          -- commands bootstrap
-  scripts/crit-nvim        -- shell entrypoint
+  scripts/crit-terminal        -- shell entrypoint
   tests/                   -- unit/smoke
   docs/superpowers/specs/  -- this design
   README.md
@@ -300,7 +300,7 @@ LazyVim install: standard lazy.nvim plugin spec; optional LazyVim “extra” la
 2. **Plan workspace** — Snacks layout, RenderMarkdown buffer, comments pane, status  
 3. **Comments** — create/edit/delete via API; annotations; `<leader>ar…`  
 4. **Live sync + finish** — events/poll; `:CritFinish`  
-5. **CLI** — `crit-nvim` wrapper  
+5. **CLI** — `crit-terminal.nvim` wrapper  
 6. **Code mode** — files list + buffer/diff toggle (reuse client/annotations)
 
 Detailed task breakdown follows in the implementation plan after spec sign-off.

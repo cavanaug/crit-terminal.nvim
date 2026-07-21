@@ -1,14 +1,14 @@
-# crit-nvim Implementation Plan
+# crit-terminal.nvim Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship a LazyVim Neovim plugin that reviews Crit plan/markdown sessions natively (Snacks layout, inline annotations + comments pane), talking only to Crit’s local HTTP API, with a `crit-nvim` shell entrypoint.
+**Goal:** Ship a LazyVim Neovim plugin that reviews Crit plan/markdown sessions natively (Snacks layout, inline annotations + comments pane), talking only to Crit’s local HTTP API, with a `crit-terminal` shell entrypoint.
 
 **Architecture:** Thin Lua HTTP client over Crit’s daemon (`crit status --json` → port; `POST /api/file/comments?path=`; `POST /api/finish`; poll/SSE for sync). Snacks layout for plan mode first; code mode skeleton last. Crit remains source of truth — plugin never writes review JSON.
 
 **Tech Stack:** Neovim Lua, Snacks.nvim layouts, Crit CLI ≥0.18, optional render-markdown.nvim, `curl` via `vim.system` for HTTP, headless `nvim` for unit tests.
 
-**Spec:** `docs/superpowers/specs/2026-07-20-crit-nvim-design.md`
+**Spec:** `docs/superpowers/specs/2026-07-20-crit-terminal-design.md`
 
 ---
 
@@ -29,7 +29,7 @@
 | `lua/crit/keymaps.lua` | `<leader>ar…` + pane-local maps |
 | `lua/crit/navigation.lua` | `]r` / `[r` comment jump |
 | `plugin/crit.lua` | Load commands on startup |
-| `scripts/crit-nvim` | Shell: launch/find Crit → open nvim workspace |
+| `scripts/crit-terminal` | Shell: launch/find Crit → open nvim workspace |
 | `tests/minimal_init.lua` | Headless nvim test bootstrap |
 | `tests/test_client.lua` | Client unit tests (mock HTTP) |
 | `tests/test_session.lua` | Status JSON / mode detection |
@@ -125,7 +125,7 @@ end, { nargs = "?", complete = "file", desc = "Open Crit review workspace" })
 - [ ] **Step 4: Stub README**
 
 ```markdown
-# crit-nvim
+# crit-terminal.nvim
 
 Native LazyVim frontend for [Crit](https://crit.md). Crit stays the source of truth.
 
@@ -133,7 +133,7 @@ Native LazyVim frontend for [Crit](https://crit.md). Crit stays the source of tr
 
 ```lua
 {
-  "YOUR_GITHUB_USER/crit-nvim",
+  "YOUR_GITHUB_USER/crit-terminal.nvim",
   dependencies = { "folke/snacks.nvim" },
   opts = {},
   keys = {
@@ -149,7 +149,7 @@ Requires `crit` on `PATH`.
 
 ```bash
 git add lua/crit/config.lua lua/crit/init.lua plugin/crit.lua README.md
-git commit -m "feat: add crit-nvim plugin skeleton and config"
+git commit -m "feat: add crit-terminal.nvim plugin skeleton and config"
 ```
 
 ---
@@ -627,7 +627,7 @@ local M = {
 local function ensure_snacks()
   local ok, snacks = pcall(require, "snacks")
   if not ok or not snacks.layout then
-    error("snacks.nvim layout required for crit-nvim")
+    error("snacks.nvim layout required for crit-terminal.nvim")
   end
   return snacks
 end
@@ -1163,17 +1163,17 @@ git commit -m "feat: poll Crit for live comment sync"
 
 ---
 
-### Task 8: `crit-nvim` CLI entrypoint
+### Task 8: `crit-terminal` CLI entrypoint
 
 **Files:**
-- Create: `scripts/crit-nvim`
+- Create: `scripts/crit-terminal`
 - Modify: `README.md`
 
 - [ ] **Step 1: Write shell entrypoint**
 
 ```bash
 #!/usr/bin/env bash
-# scripts/crit-nvim — start/find Crit, open Neovim review workspace
+# scripts/crit-terminal — start/find Crit, open Neovim review workspace
 set -euo pipefail
 
 FILE="${1:-}"
@@ -1216,10 +1216,10 @@ if [[ -n "$FILE" && "$FILE" != /* ]]; then
   ABS="$(pwd)/$FILE"
 fi
 
-export CRIT_NVIM_BASE_URL="$URL"
+export CRIT_TERMINAL_BASE_URL="$URL"
 exec nvim \
-  -c "lua require('crit').setup({ base_url = vim.env.CRIT_NVIM_BASE_URL })" \
-  -c "lua require('crit').review({ file = [[${ABS}]], base_url = vim.env.CRIT_NVIM_BASE_URL })"
+  -c "lua require('crit').setup({ base_url = vim.env.CRIT_TERMINAL_BASE_URL })" \
+  -c "lua require('crit').review({ file = [[${ABS}]], base_url = vim.env.CRIT_TERMINAL_BASE_URL })"
 ```
 
 Prefer `python3 -c 'import json,sys;…'` for port parsing if `sed` is fragile.
@@ -1230,7 +1230,7 @@ Prefer `python3 -c 'import json,sys;…'` for port parsing if `sed` is fragile.
 ## CLI
 
 ```bash
-./scripts/crit-nvim path/to/plan.md
+./scripts/crit-terminal path/to/plan.md
 ```
 
 Starts Crit with `--no-open` (or reuses a running daemon) and opens Neovim into the plan workspace.
@@ -1239,8 +1239,8 @@ Starts Crit with `--no-open` (or reuses a running daemon) and opens Neovim into 
 - [ ] **Step 3: Manual smoke**
 
 ```bash
-chmod +x scripts/crit-nvim
-./scripts/crit-nvim /tmp/demo-plan.md
+chmod +x scripts/crit-terminal
+./scripts/crit-terminal /tmp/demo-plan.md
 ```
 
 Expected: Crit daemon up, Neovim layout open on the plan.
@@ -1248,8 +1248,8 @@ Expected: Crit daemon up, Neovim layout open on the plan.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add scripts/crit-nvim README.md
-git commit -m "feat: add crit-nvim shell entrypoint"
+git add scripts/crit-terminal README.md
+git commit -m "feat: add crit-terminal.nvim shell entrypoint"
 ```
 
 ---
@@ -1281,7 +1281,7 @@ git commit -m "feat: add code review workspace skeleton"
 
 **Files:**
 - Modify: `README.md`
-- Modify: `docs/superpowers/specs/2026-07-20-crit-nvim-design.md` (status → Approved)
+- Modify: `docs/superpowers/specs/2026-07-20-crit-terminal-design.md` (status → Approved)
 
 - [ ] **Step 1: Expand README smoke section**
 
@@ -1289,7 +1289,7 @@ git commit -m "feat: add code review workspace skeleton"
 ## Smoke checklist
 
 - [ ] `crit` on PATH; plugin installed with Snacks
-- [ ] `./scripts/crit-nvim plan.md` opens plan workspace
+- [ ] `./scripts/crit-terminal plan.md` opens plan workspace
 - [ ] Visual select + `<leader>arc` creates comment (pane + sign)
 - [ ] Comment appears in Crit browser UI
 - [ ] Browser-created comment appears in Neovim within ~2s
@@ -1308,7 +1308,7 @@ Expected: all `OK`
 - [ ] **Step 3: Commit**
 
 ```bash
-git add README.md docs/superpowers/specs/2026-07-20-crit-nvim-design.md
+git add README.md docs/superpowers/specs/2026-07-20-crit-terminal-design.md
 git commit -m "docs: add smoke checklist; mark design approved"
 ```
 
@@ -1326,7 +1326,7 @@ git commit -m "docs: add smoke checklist; mark design approved"
 | `<leader>ar…` keymaps | 6 |
 | Live sync | 7 |
 | Finish via `/api/finish` | 6, 7 |
-| `crit-nvim` CLI | 8 |
+| `crit-terminal` CLI | 8 |
 | Code mode later/skeleton | 9 |
 | Error: no silent local comments | 6 (pcall + notify) |
 | Unit tests + smoke | 2, 5, 10 |

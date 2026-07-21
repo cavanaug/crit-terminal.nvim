@@ -11,7 +11,7 @@ local M = {
 local function require_snacks()
   local ok, snacks = pcall(require, "snacks")
   if not ok or not snacks or not snacks.layout or not snacks.win then
-    error("crit.nvim code UI requires snacks.nvim layout support", 0)
+    error("crit-terminal.nvim code UI requires snacks.nvim layout support", 0)
   end
 
   return snacks
